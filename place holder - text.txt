@@ -1,0 +1,87 @@
+import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.xssf.eventusermodel.ReadOnlySharedStringsTable;
+import org.apache.poi.xssf.eventusermodel.XSSFReader;
+import org.apache.poi.xssf.model.SharedStrings;
+import org.apache.poi.xssf.usermodel.XSSFRichTextString;
+import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.DefaultHandler;
+import org.xml.sax.helpers.XMLReaderFactory;
+
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+public class EventBasedExcelReader {
+
+    public static void main(String[] args) {
+        String filePath = "large_excel.xlsx"; // Set your Excel file path here
+
+        try {
+            OPCPackage pkg = OPCPackage.open(filePath);
+            XSSFReader reader = new XSSFReader(pkg);
+            SharedStrings sharedStrings = new ReadOnlySharedStringsTable(pkg);
+            XMLReader parser = XMLReaderFactory.createXMLReader();
+            SheetHandler handler = new SheetHandler(sharedStrings);
+            parser.setContentHandler(handler);
+
+            InputStream sheetStream = reader.getSheetsData().next(); // Get first sheet
+            InputSource sheetSource = new InputSource(sheetStream);
+            parser.parse(sheetSource);
+
+            sheetStream.close();
+            pkg.close();
+
+            System.out.println("Excel Read Successfully!");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Custom SAX Handler to process each cell efficiently.
+     */
+    static class SheetHandler extends DefaultHandler {
+        private final SharedStrings sharedStrings;
+        private String currentElement;
+        private String currentCellRef;
+        private boolean isStringCell;
+        private final List<String> rowValues = new ArrayList<>();
+
+        public SheetHandler(SharedStrings sharedStrings) {
+            this.sharedStrings = sharedStrings;
+        }
+
+        @Override
+        public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
+            if (qName.equals("c")) { // Cell element
+                currentCellRef = attributes.getValue("r"); // Get cell reference (e.g., A1, B2)
+                String cellType = attributes.getValue("t"); // Get cell type
+                isStringCell = "s".equals(cellType); // Check if it's a shared string cell
+            }
+            currentElement = qName;
+        }
+
+        @Override
+        public void characters(char[] ch, int start, int length) throws SAXException {
+            if ("v".equals(currentElement)) { // Value element
+                String value = new String(ch, start, length);
+                if (isStringCell) {
+                    int idx = Integer.parseInt(value);
+                    value = new XSSFRichTextString(sharedStrings.getItemAt(idx)).toString();
+                }
+                rowValues.add(value);
+            }
+        }
+
+        @Override
+        public void endElement(String uri, String localName, String qName) throws SAXException {
+            if ("row".equals(qName)) { // End of row
+                System.out.println(rowValues); // Print the row data
+                rowValues.clear();
+            }
+        }
+    }
+}
