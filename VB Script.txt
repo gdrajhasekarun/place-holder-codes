@@ -1,0 +1,55 @@
+Sub FilterAccessData()
+    Dim cnn As Object
+    Dim rs As Object
+    Dim dbPath As String
+    Dim query As String
+    Dim excelDate As Date
+    Dim excelValue As Double
+    Dim resultColumn As Range
+    Dim i As Integer
+    Dim lastRow As Long
+    
+    ' Set database path relative to the location of the Excel file
+    dbPath = ThisWorkbook.Path & "\yourAccessFile.accdb" ' Assuming the DB is in the same folder
+    
+    ' Get the last row of data in the Excel table (assuming table starts from Row 2)
+    lastRow = ThisWorkbook.Sheets("Sheet1").Cells(ThisWorkbook.Sheets("Sheet1").Rows.Count, "A").End(xlUp).Row
+    
+    ' Create connection to Access Database
+    Set cnn = CreateObject("ADODB.Connection")
+    cnn.Open "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" & dbPath
+    
+    ' Loop through each row of the Excel table starting from row 2
+    For i = 2 To lastRow
+        excelDate = ThisWorkbook.Sheets("Sheet1").Cells(i, 1).Value ' Excel Date (Column A)
+        excelValue = ThisWorkbook.Sheets("Sheet1").Cells(i, 2).Value ' Excel Value (Column B)
+        
+        ' Define the query with parameters (use TOP 1 to limit the results to one)
+        query = "PARAMETERS ExcelDate DateTime, ExcelValue Double;" & vbCrLf & _
+                "SELECT TOP 1 * FROM YourTable " & vbCrLf & _
+                "WHERE AccessDate = [ExcelDate] AND AccessValue = [ExcelValue];"
+        
+        ' Execute the query with parameters
+        Set rs = CreateObject("ADODB.Recordset")
+        rs.Open query, cnn, 1, 3, 1 ' Execute the query
+        
+        ' Check if a record is found
+        If Not rs.EOF Then
+            ' Set the cell where the result will be stored (adjacent to the Date and Value columns)
+            Set resultColumn = ThisWorkbook.Sheets("Sheet1").Cells(i, 3) ' Column C to store result (same row)
+            
+            ' Populate the adjacent column with the result (adjust column name as needed)
+            resultColumn.Value = rs.Fields("YourColumnName").Value ' Replace "YourColumnName" with the actual column name
+        Else
+            ' If no record is found, write "No match" in the result column
+            Set resultColumn = ThisWorkbook.Sheets("Sheet1").Cells(i, 3) ' Column C
+            resultColumn.Value = "No match"
+        End If
+    Next i
+    
+    ' Clean up
+    rs.Close
+    cnn.Close
+    Set rs = Nothing
+    Set cnn = Nothing
+End Sub
