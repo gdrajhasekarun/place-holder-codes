@@ -1,0 +1,419 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
+  IconButton,
+  Grid,
+  Stack,
+  Skeleton,
+  Alert,
+  Tooltip,
+  Paper
+} from '@mui/material';
+import {
+  ContentCopy as CopyIcon,
+  Search as SearchIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon
+} from '@mui/icons-material';
+
+// Mock API call
+const fetchLocators = async () => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  return [
+    {
+      id: 1,
+      applicationName: 'E-Commerce App',
+      pageName: 'Login Page',
+      locatorName: 'Username Input',
+      type: 'id',
+      value: 'username-field'
+    },
+    {
+      id: 2,
+      applicationName: 'E-Commerce App',
+      pageName: 'Login Page',
+      locatorName: 'Password Input',
+      type: 'id',
+      value: 'password-field'
+    },
+    {
+      id: 3,
+      applicationName: 'E-Commerce App',
+      pageName: 'Login Page',
+      locatorName: 'Login Button',
+      type: 'css',
+      value: '.login-btn'
+    },
+    {
+      id: 4,
+      applicationName: 'E-Commerce App',
+      pageName: 'Product Page',
+      locatorName: 'Add to Cart',
+      type: 'xpath',
+      value: '//button[contains(text(), "Add to Cart")]'
+    },
+    {
+      id: 5,
+      applicationName: 'CRM System',
+      pageName: 'Dashboard',
+      locatorName: 'Navigation Menu',
+      type: 'class',
+      value: 'nav-menu'
+    },
+    {
+      id: 6,
+      applicationName: 'CRM System',
+      pageName: 'Dashboard',
+      locatorName: 'User Profile',
+      type: 'css',
+      value: '.user-profile-dropdown'
+    },
+    {
+      id: 7,
+      applicationName: 'CRM System',
+      pageName: 'Contacts Page',
+      locatorName: 'Contact List',
+      type: 'xpath',
+      value: '//div[@class="contact-list"]'
+    },
+    {
+      id: 8,
+      applicationName: 'Banking App',
+      pageName: 'Transfer Page',
+      locatorName: 'Amount Input',
+      type: 'name',
+      value: 'transfer-amount'
+    }
+  ];
+};
+
+const LocatorsListComponent = () => {
+  const [locators, setLocators] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedApplication, setSelectedApplication] = useState('');
+  const [selectedPage, setSelectedPage] = useState('');
+
+  // Fetch locators on component mount
+  useEffect(() => {
+    const loadLocators = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchLocators();
+        setLocators(data);
+      } catch (err) {
+        setError('Failed to load locators');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLocators();
+  }, []);
+
+  // Get unique applications and pages for filters
+  const { applications, pages } = useMemo(() => {
+    const apps = [...new Set(locators.map(loc => loc.applicationName))];
+    const pagesForApp = selectedApplication 
+      ? [...new Set(locators
+          .filter(loc => loc.applicationName === selectedApplication)
+          .map(loc => loc.pageName))]
+      : [...new Set(locators.map(loc => loc.pageName))];
+    
+    return {
+      applications: apps,
+      pages: pagesForApp
+    };
+  }, [locators, selectedApplication]);
+
+  // Filtered locators based on search and filters
+  const filteredLocators = useMemo(() => {
+    return locators.filter(locator => {
+      const matchesSearch = searchTerm === '' || 
+        locator.locatorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        locator.value.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesApp = selectedApplication === '' || 
+        locator.applicationName === selectedApplication;
+      
+      const matchesPage = selectedPage === '' || 
+        locator.pageName === selectedPage;
+
+      return matchesSearch && matchesApp && matchesPage;
+    });
+  }, [locators, searchTerm, selectedApplication, selectedPage]);
+
+  const getLocatorIcon = (type) => {
+    const icons = {
+      'id': '🆔',
+      'class': '📝',
+      'xpath': '🔍',
+      'css': '🎨',
+      'name': '📛',
+      'tag': '🏷️'
+    };
+    return icons[type] || '📍';
+  };
+
+  const getTypeColor = (type) => {
+    const colors = {
+      'id': 'primary',
+      'class': 'secondary',
+      'xpath': 'warning',
+      'css': 'info',
+      'name': 'success',
+      'tag': 'error'
+    };
+    return colors[type] || 'default';
+  };
+
+  const handleCopyLocator = async (value) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      // You could add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy locator:', err);
+    }
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedApplication('');
+    setSelectedPage('');
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h5" gutterBottom>Locators Library</Typography>
+        <Box sx={{ mb: 3 }}>
+          <Grid container spacing={2}>
+            {[1, 2, 3].map(i => (
+              <Grid item xs={12} key={i}>
+                <Skeleton variant="rectangular" height={120} />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Locators Library
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Browse and search through {locators.length} available locators
+        </Typography>
+      </Box>
+
+      {/* Filters Section */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <FilterIcon color="primary" />
+          <Typography variant="h6">Filters</Typography>
+          {(searchTerm || selectedApplication || selectedPage) && (
+            <Tooltip title="Clear all filters">
+              <IconButton size="small" onClick={clearFilters}>
+                <ClearIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+        
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label="Search Locators"
+              placeholder="Search by name or value..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Application</InputLabel>
+              <Select
+                value={selectedApplication}
+                onChange={(e) => {
+                  setSelectedApplication(e.target.value);
+                  setSelectedPage(''); // Reset page when app changes
+                }}
+                label="Application"
+              >
+                <MenuItem value="">All Applications</MenuItem>
+                {applications.map(app => (
+                  <MenuItem key={app} value={app}>{app}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Page</InputLabel>
+              <Select
+                value={selectedPage}
+                onChange={(e) => setSelectedPage(e.target.value)}
+                label="Page"
+              >
+                <MenuItem value="">All Pages</MenuItem>
+                {pages.map(page => (
+                  <MenuItem key={page} value={page}>{page}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Results Summary */}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Showing {filteredLocators.length} of {locators.length} locators
+          {(selectedApplication || selectedPage) && (
+            <span>
+              {selectedApplication && ` in ${selectedApplication}`}
+              {selectedPage && ` on ${selectedPage}`}
+            </span>
+          )}
+        </Typography>
+      </Box>
+
+      {/* Locators Grid */}
+      {filteredLocators.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No locators found
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Try adjusting your search or filter criteria
+          </Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={2}>
+          {filteredLocators.map((locator) => (
+            <Grid item xs={12} sm={6} lg={4} key={locator.id}>
+              <Card 
+                variant="outlined" 
+                sx={{ 
+                  height: '100%',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    boxShadow: 2,
+                    transform: 'translateY(-2px)'
+                  }
+                }}
+              >
+                <CardContent>
+                  {/* Locator Header */}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography sx={{ fontSize: '1.2rem' }}>
+                        {getLocatorIcon(locator.type)}
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        {locator.locatorName}
+                      </Typography>
+                    </Box>
+                    <Chip 
+                      label={locator.type.toUpperCase()} 
+                      size="small" 
+                      color={getTypeColor(locator.type)}
+                    />
+                  </Box>
+
+                  {/* Context Info */}
+                  <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                    <Chip 
+                      label={locator.applicationName} 
+                      size="small" 
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                    <Chip 
+                      label={locator.pageName} 
+                      size="small" 
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  </Stack>
+
+                  {/* Locator Value */}
+                  <Box sx={{ 
+                    p: 1.5, 
+                    backgroundColor: 'grey.50', 
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'grey.200',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontFamily: 'monospace',
+                        fontSize: '0.8rem',
+                        wordBreak: 'break-all',
+                        flex: 1,
+                        mr: 1
+                      }}
+                    >
+                      {locator.value}
+                    </Typography>
+                    <Tooltip title="Copy locator value">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleCopyLocator(locator.value)}
+                        sx={{ 
+                          '&:hover': { 
+                            backgroundColor: 'primary.light',
+                            color: 'white'
+                          }
+                        }}
+                      >
+                        <CopyIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+    </Box>
+  );
+};
+
+export default LocatorsListComponent;
