@@ -1,0 +1,651 @@
+import React, { useEffect, useCallback } from 'react';
+import { useSelector, useDispatch, Provider } from 'react-redux';
+import { configureStore, createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import {
+  Box,
+  Card,
+  CardContent,
+  CardActions,
+  Typography,
+  Chip,
+  Button,
+  Grid,
+  Paper,
+  CircularProgress,
+  TextField,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  Divider,
+  Container,
+  Stack,
+  Tooltip,
+  Badge,
+  TablePagination,
+  Alert,
+  SelectChangeEvent
+} from '@mui/material';
+import {
+  Edit as EditIcon,
+  PlayArrow as TestIcon,
+  ContentCopy as CopyIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon,
+  Search as SearchIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
+
+// Type definitions
+type LocatorType = 'id' | 'xpath' | 'css' | 'className' | 'name' | 'tagName';
+
+interface Locator {
+  id: number;
+  locatorName: string;
+  locatorValue: string;
+  applicationName: string;
+  projectName: string;
+  pageName: string;
+  locatorType: LocatorType;
+  isActive: boolean;
+  lastUpdated: string;
+}
+
+interface Filters {
+  applicationName: string;
+  projectName: string;
+  searchTerm: string;
+}
+
+interface LoadLocatorsParams {
+  page: number;
+  pageSize: number;
+  filters: Filters;
+}
+
+interface LoadLocatorsResponse {
+  locators: Locator[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
+interface LocatorsState {
+  items: Locator[];
+  loading: boolean;
+  error: string | null;
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  filters: Filters;
+}
+
+interface RootState {
+  locators: LocatorsState;
+}
+
+interface SetFilterPayload {
+  filterType: keyof Filters;
+  value: string;
+}
+
+// Mock data with proper types
+const applications: string[] = ['Web Portal', 'Mobile App', 'Admin Dashboard', 'Customer Portal', 'API Gateway'];
+const projects: string[] = ['Project Alpha', 'Project Beta', 'Project Gamma', 'Project Delta', 'Project Epsilon'];
+const locatorTypes: LocatorType[] = ['id', 'xpath', 'css', 'className', 'name', 'tagName'];
+const pages: string[] = ['Login', 'Dashboard', 'Profile', 'Settings', 'Reports', 'Users', 'Products', 'Orders'];
+
+// Mock API function with proper typing
+const fetchLocatorsAPI = async (
+  page: number, 
+  pageSize: number, 
+  filters: Filters = { applicationName: '', projectName: '', searchTerm: '' }
+): Promise<LoadLocatorsResponse> => {
+  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+  
+  // Generate all possible locators first
+  const allLocators: Locator[] = [];
+  const totalItems: number = 150; // Total items in "database"
+  
+  for (let i = 0; i < totalItems; i++) {
+    const app: string = applications[i % applications.length];
+    const project: string = projects[i % projects.length];
+    const pageName: string = pages[i % pages.length];
+    const locatorType: LocatorType = locatorTypes[i % locatorTypes.length];
+    
+    allLocators.push({
+      id: i,
+      locatorName: `${pageName}_${locatorType}_${i + 1}`,
+      locatorValue: generateLocatorValue(locatorType, pageName, i),
+      applicationName: app,
+      projectName: project,
+      pageName: pageName,
+      locatorType: locatorType,
+      isActive: Math.random() > 0.2,
+      lastUpdated: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
+    });
+  }
+
+  // Apply filters
+  const filteredLocators: Locator[] = allLocators.filter((locator: Locator) => {
+    const matchesApp: boolean = !filters.applicationName || locator.applicationName === filters.applicationName;
+    const matchesProject: boolean = !filters.projectName || locator.projectName === filters.projectName;
+    const matchesSearch: boolean = !filters.searchTerm || 
+      locator.locatorName.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+      locator.locatorValue.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+      locator.pageName.toLowerCase().includes(filters.searchTerm.toLowerCase());
+    
+    return matchesApp && matchesProject && matchesSearch;
+  });
+
+  // Apply pagination
+  const startIndex: number = (page - 1) * pageSize;
+  const endIndex: number = startIndex + pageSize;
+  const paginatedItems: Locator[] = filteredLocators.slice(startIndex, endIndex);
+  
+  return {
+    locators: paginatedItems,
+    totalCount: filteredLocators.length,
+    totalPages: Math.ceil(filteredLocators.length / pageSize),
+    currentPage: page,
+    pageSize: pageSize
+  };
+};
+
+const generateLocatorValue = (type: LocatorType, page: string, index: number): string => {
+  switch (type) {
+    case 'id':
+      return `${page.toLowerCase()}-${['submit', 'cancel', 'input', 'button', 'form'][index % 5]}-${index}`;
+    case 'xpath':
+      return `//div[@class='${page.toLowerCase()}']//*[@id='element-${index}']`;
+    case 'css':
+      return `.${page.toLowerCase()}-container .btn-${['primary', 'secondary', 'success'][index % 3]}`;
+    case 'className':
+      return `${page.toLowerCase()}-${['header', 'content', 'footer', 'sidebar'][index % 4]}`;
+    case 'name':
+      return `${page.toLowerCase()}_${['username', 'password', 'email', 'phone'][index % 4]}`;
+    case 'tagName':
+      return ['button', 'input', 'select', 'textarea', 'div'][index % 5];
+    default:
+      return `locator-value-${index}`;
+  }
+};
+
+// Redux Async Thunks with proper typing
+const loadLocators = createAsyncThunk<
+  LoadLocatorsResponse,
+  LoadLocatorsParams,
+  { rejectValue: string }
+>(
+  'locators/loadLocators',
+  async ({ page, pageSize, filters }, { rejectWithValue }) => {
+    try {
+      const result: LoadLocatorsResponse = await fetchLocatorsAPI(page, pageSize, filters);
+      return result;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+    }
+  }
+);
+
+// Redux Slice with proper typing
+const locatorsSlice = createSlice({
+  name: 'locators',
+  initialState: {
+    items: [],
+    loading: false,
+    error: null,
+    totalCount: 0,
+    totalPages: 0,
+    currentPage: 1,
+    pageSize: 10,
+    filters: {
+      applicationName: '',
+      projectName: '',
+      searchTerm: ''
+    }
+  } as LocatorsState,
+  reducers: {
+    setFilter: (state, action: PayloadAction<SetFilterPayload>) => {
+      const { filterType, value } = action.payload;
+      state.filters[filterType] = value;
+      state.currentPage = 1; // Reset to first page when filters change
+    },
+    clearFilters: (state) => {
+      state.filters = {
+        applicationName: '',
+        projectName: '',
+        searchTerm: ''
+      };
+      state.currentPage = 1;
+    },
+    setPage: (state, action: PayloadAction<number>) => {
+      state.currentPage = action.payload;
+    },
+    setPageSize: (state, action: PayloadAction<number>) => {
+      state.pageSize = action.payload;
+      state.currentPage = 1; // Reset to first page when page size changes
+    },
+    clearError: (state) => {
+      state.error = null;
+    }
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loadLocators.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadLocators.fulfilled, (state, action: PayloadAction<LoadLocatorsResponse>) => {
+        const { locators, totalCount, totalPages, currentPage, pageSize } = action.payload;
+        
+        state.loading = false;
+        state.items = locators;
+        state.totalCount = totalCount;
+        state.totalPages = totalPages;
+        state.currentPage = currentPage;
+        state.pageSize = pageSize;
+      })
+      .addCase(loadLocators.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to load locators';
+      });
+  }
+});
+
+// Export actions
+const { setFilter, clearFilters, setPage, setPageSize, clearError } = locatorsSlice.actions;
+
+// Configure store with proper typing
+const store = configureStore({
+  reducer: {
+    locators: locatorsSlice.reducer
+  }
+});
+
+export type AppDispatch = typeof store.dispatch;
+
+// Locator Card Component with proper typing
+interface LocatorCardProps {
+  locator: Locator;
+}
+
+const LocatorCard: React.FC<LocatorCardProps> = React.memo(({ locator }) => {
+  const getLocatorTypeColor = (type: LocatorType): 'success' | 'primary' | 'secondary' | 'warning' | 'error' | 'default' => {
+    const colors: Record<LocatorType, 'success' | 'primary' | 'secondary' | 'warning' | 'error' | 'default'> = {
+      id: 'success',
+      xpath: 'primary',
+      css: 'secondary',
+      className: 'warning',
+      name: 'error',
+      tagName: 'default'
+    };
+    return colors[type] || 'default';
+  };
+
+  const truncateValue = (value: string, maxLength: number = 50): string => {
+    if (value.length <= maxLength) return value;
+    return value.substring(0, maxLength) + '...';
+  };
+
+  return (
+    <Card elevation={2} sx={{ position: 'relative', '&:hover': { elevation: 4 } }}>
+      <CardContent sx={{ pb: 1 }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold' }}>
+              {locator.locatorName}
+            </Typography>
+            <Chip 
+              label={locator.locatorType.toUpperCase()} 
+              color={getLocatorTypeColor(locator.locatorType)}
+              size="small"
+              variant="outlined"
+            />
+            {!locator.isActive && (
+              <Chip label="INACTIVE" color="error" size="small" />
+            )}
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            Last Updated: {new Date(locator.lastUpdated).toLocaleDateString()}
+          </Typography>
+        </Box>
+
+        {/* Main Content */}
+        <Grid container spacing={3}>
+          {/* Locator Value */}
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+              📍 Locator Value
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+              <Typography 
+                variant="body2" 
+                sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}
+                title={locator.locatorValue}
+              >
+                {truncateValue(locator.locatorValue)}
+              </Typography>
+            </Paper>
+          </Grid>
+
+          {/* Application, Project, and Page Info */}
+          <Grid item xs={12} md={6}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={4}>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  🏢 Application
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'primary.50' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+                    {locator.applicationName}
+                  </Typography>
+                </Paper>
+              </Grid>
+              
+              <Grid item xs={12} sm={4}>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  📁 Project
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'secondary.50' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 'medium', color: 'secondary.main' }}>
+                    {locator.projectName}
+                  </Typography>
+                </Paper>
+              </Grid>
+              
+              <Grid item xs={12} sm={4}>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  📄 Page
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'success.50' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 'medium', color: 'success.main' }}>
+                    {locator.pageName}
+                  </Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+          </Grid>
+        </Grid>
+      </CardContent>
+
+      <Divider />
+      
+      <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+        <Tooltip title="Edit Locator">
+          <Button startIcon={<EditIcon />} size="small" variant="outlined" color="primary">
+            Edit
+          </Button>
+        </Tooltip>
+        <Tooltip title="Test Locator">
+          <Button startIcon={<TestIcon />} size="small" variant="outlined" color="success">
+            Test
+          </Button>
+        </Tooltip>
+        <Tooltip title="Copy Locator Value">
+          <Button startIcon={<CopyIcon />} size="small" variant="outlined">
+            Copy
+          </Button>
+        </Tooltip>
+      </CardActions>
+    </Card>
+  );
+});
+
+LocatorCard.displayName = 'LocatorCard';
+
+// Filter Controls Component with proper typing
+const FilterControls: React.FC = React.memo(() => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { filters, loading } = useSelector((state: RootState) => state.locators);
+
+  const handleFilterChange = (filterType: keyof Filters, value: string): void => {
+    dispatch(setFilter({ filterType, value }));
+  };
+
+  const handleSelectChange = (filterType: keyof Filters) => (event: SelectChangeEvent<string>): void => {
+    handleFilterChange(filterType, event.target.value);
+  };
+
+  const handleTextFieldChange = (filterType: keyof Filters) => (event: React.ChangeEvent<HTMLInputElement>): void => {
+    handleFilterChange(filterType, event.target.value);
+  };
+
+  const handleClearFilters = (): void => {
+    dispatch(clearFilters());
+  };
+
+  const handleRefresh = (): void => {
+    dispatch(loadLocators({ 
+      page: 1, 
+      pageSize: 10, 
+      filters 
+    }));
+  };
+
+  const activeFiltersCount: number = Object.values(filters).filter((value: string) => value !== '').length;
+
+  return (
+    <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <FilterIcon sx={{ mr: 1, color: 'text.secondary' }} />
+        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          Filters
+        </Typography>
+        <Stack direction="row" spacing={1}>
+          <Button
+            startIcon={<RefreshIcon />}
+            onClick={handleRefresh}
+            size="small"
+            variant="outlined"
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+          {activeFiltersCount > 0 && (
+            <Badge badgeContent={activeFiltersCount} color="primary">
+              <Button
+                startIcon={<ClearIcon />}
+                onClick={handleClearFilters}
+                size="small"
+                variant="outlined"
+              >
+                Clear All
+              </Button>
+            </Badge>
+          )}
+        </Stack>
+      </Box>
+      
+      <Grid container spacing={3}>
+        <Grid item xs={12} sm={6} md={3}>
+          <FormControl fullWidth>
+            <InputLabel>Application Name</InputLabel>
+            <Select
+              value={filters.applicationName}
+              label="Application Name"
+              onChange={handleSelectChange('applicationName')}
+              disabled={loading}
+            >
+              <MenuItem value="">All Applications</MenuItem>
+              {applications.map((app: string) => (
+                <MenuItem key={app} value={app}>{app}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <FormControl fullWidth>
+            <InputLabel>Project Name</InputLabel>
+            <Select
+              value={filters.projectName}
+              label="Project Name"
+              onChange={handleSelectChange('projectName')}
+              disabled={loading}
+            >
+              <MenuItem value="">All Projects</MenuItem>
+              {projects.map((project: string) => (
+                <MenuItem key={project} value={project}>{project}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        
+        <Grid item xs={12} sm={12} md={6}>
+          <TextField
+            fullWidth
+            label="Search locators..."
+            variant="outlined"
+            value={filters.searchTerm}
+            onChange={handleTextFieldChange('searchTerm')}
+            disabled={loading}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+            }}
+            placeholder="Search by name, value, or page..."
+          />
+        </Grid>
+      </Grid>
+    </Paper>
+  );
+});
+
+FilterControls.displayName = 'FilterControls';
+
+// Pagination Controls Component with proper typing
+const PaginationControls: React.FC = React.memo(() => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { currentPage, totalPages, totalCount, pageSize, loading } = useSelector((state: RootState) => state.locators);
+
+  const handlePageChange = (event: unknown, newPage: number): void => {
+    dispatch(setPage(newPage));
+  };
+
+  const handlePageSizeChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
+    dispatch(setPageSize(parseInt(event.target.value, 10)));
+  };
+
+  return (
+    <Paper elevation={1} sx={{ p: 2, mt: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Showing {totalCount > 0 ? ((currentPage - 1) * pageSize + 1) : 0} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} locators
+        </Typography>
+        
+        <Stack direction="row" spacing={2} alignItems="center">
+          <TablePagination
+            component="div"
+            count={totalCount}
+            page={currentPage - 1}
+            onPageChange={(event, newPage) => handlePageChange(event, newPage + 1)}
+            rowsPerPage={pageSize}
+            onRowsPerPageChange={handlePageSizeChange}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            disabled={loading}
+            showFirstButton
+            showLastButton
+          />
+        </Stack>
+      </Box>
+    </Paper>
+  );
+});
+
+PaginationControls.displayName = 'PaginationControls';
+
+// Main Locator List Component with proper typing
+const LocatorList: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { items, loading, error, currentPage, pageSize, filters, totalCount } = useSelector((state: RootState) => state.locators);
+
+  // Load data when component mounts or when page/filters change
+  useEffect(() => {
+    dispatch(loadLocators({ 
+      page: currentPage, 
+      pageSize, 
+      filters 
+    }));
+  }, [dispatch, currentPage, pageSize, filters]);
+
+  const handleCloseError = (): void => {
+    dispatch(clearError());
+  };
+
+  return (
+    <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
+      <Container maxWidth="xl">
+        {/* Header */}
+        <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}>
+          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+            🎯 Locator Management System
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Browse and manage locators across applications and projects with advanced filtering and pagination.
+          </Typography>
+        </Paper>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert severity="error" onClose={handleCloseError} sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Filters */}
+        <FilterControls />
+
+        {/* Loading State */}
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <CircularProgress size={32} />
+              <Typography color="text.secondary">Loading locators...</Typography>
+            </Stack>
+          </Box>
+        )}
+
+        {/* Locator Cards */}
+        {!loading && (
+          <>
+            {items.length === 0 ? (
+              <Paper elevation={1} sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="h6" gutterBottom>
+                  No locators found
+                </Typography>
+                <Typography color="text.secondary">
+                  Try adjusting your filters or search terms
+                </Typography>
+              </Paper>
+            ) : (
+              <Grid container spacing={3}>
+                {items.map((locator: Locator) => (
+                  <Grid item xs={12} key={locator.id}>
+                    <LocatorCard locator={locator} />
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </>
+        )}
+
+        {/* Pagination */}
+        {!loading && totalCount > 0 && <PaginationControls />}
+      </Container>
+    </Box>
+  );
+};
+
+// Main App Component with Redux Provider and proper typing
+const App: React.FC = () => {
+  return (
+    <Provider store={store}>
+      <LocatorList />
+    </Provider>
+  );
+};
+
+export default App;
