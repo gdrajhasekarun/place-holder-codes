@@ -79,28 +79,53 @@ const TestCaseTable: React.FC = () => {
     };
 
     return (
-        <Box sx={{ padding: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-            <Paper elevation={1} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-                <TableContainer>
-                    <Table>
+        <Box 
+            sx={{ 
+                padding: 3, 
+                backgroundColor: '#f5f5f5', 
+                height: '100vh',
+                display: 'flex',
+                flexDirection: 'column'
+            }}
+        >
+            {/* Scrollable Table Container */}
+            <Paper 
+                elevation={1} 
+                sx={{ 
+                    borderRadius: 2, 
+                    overflow: 'hidden',
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    marginBottom: 2
+                }}
+            >
+                <TableContainer 
+                    sx={{ 
+                        flex: 1,
+                        maxHeight: 'calc(100vh - 200px)', // Adjust based on your needs
+                        overflow: 'auto'
+                    }}
+                >
+                    <Table stickyHeader>
                         <TableHead>
                             <TableRow sx={{ backgroundColor: '#e0e0e0' }}>
-                                <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>
+                                <TableCell sx={{ fontWeight: 'bold', color: '#333', backgroundColor: '#e0e0e0' }}>
                                     Test Case ID
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>
+                                <TableCell sx={{ fontWeight: 'bold', color: '#333', backgroundColor: '#e0e0e0' }}>
                                     Test Case Description
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>
+                                <TableCell sx={{ fontWeight: 'bold', color: '#333', backgroundColor: '#e0e0e0' }}>
                                     Created On
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>
+                                <TableCell sx={{ fontWeight: 'bold', color: '#333', backgroundColor: '#e0e0e0' }}>
                                     Step Count
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>
+                                <TableCell sx={{ fontWeight: 'bold', color: '#333', backgroundColor: '#e0e0e0' }}>
                                     Status
                                 </TableCell>
-                                <TableCell sx={{ width: 50 }} />
+                                <TableCell sx={{ width: 50, backgroundColor: '#e0e0e0' }} />
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -166,46 +191,50 @@ const TestCaseTable: React.FC = () => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+            </Paper>
 
-                {/* Footer with buttons */}
-                <Box
+            {/* Fixed Bottom Button Bar */}
+            <Paper
+                elevation={2}
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: 2,
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: 2,
+                    position: 'sticky',
+                    bottom: 0,
+                    zIndex: 100
+                }}
+            >
+                <Button
+                    onClick={handleBackClick}
                     sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: 2,
-                        backgroundColor: '#f8f9fa',
-                        borderTop: '1px solid #e0e0e0'
+                        color: '#333',
+                        textTransform: 'none',
+                        fontWeight: 'medium'
                     }}
                 >
-                    <Button
-                        onClick={handleBackClick}
-                        sx={{
-                            color: '#333',
-                            textTransform: 'none',
-                            fontWeight: 'medium'
-                        }}
-                    >
-                        Back
-                    </Button>
+                    Back
+                </Button>
 
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={handleAddToTestSuite}
-                        sx={{
-                            backgroundColor: '#6c757d',
-                            color: 'white',
-                            textTransform: 'none',
-                            fontWeight: 'medium',
-                            '&:hover': {
-                                backgroundColor: '#5a6268'
-                            }
-                        }}
-                    >
-                        Add to Test Suite
-                    </Button>
-                </Box>
+                <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={handleAddToTestSuite}
+                    sx={{
+                        backgroundColor: '#6c757d',
+                        color: 'white',
+                        textTransform: 'none',
+                        fontWeight: 'medium',
+                        '&:hover': {
+                            backgroundColor: '#5a6268'
+                        }
+                    }}
+                >
+                    Add to Test Suite
+                </Button>
             </Paper>
         </Box>
     );
