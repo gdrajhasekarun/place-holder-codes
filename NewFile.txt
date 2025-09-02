@@ -5,12 +5,6 @@ import {
     Chip,
     IconButton,
     Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -23,7 +17,7 @@ interface TestCase {
     status: 'Non-automated' | 'Automated';
 }
 
-const TestCaseTable: React.FC = () => {
+const TestCaseCardView: React.FC = () => {
     const testCases: TestCase[] = [
         {
             id: 'TC-546',
@@ -70,8 +64,8 @@ const TestCaseTable: React.FC = () => {
         console.log('Add to Test Suite clicked');
     };
 
-    const handleRowClick = (testCase: TestCase) => {
-        console.log('Row clicked:', testCase.id);
+    const handleCardClick = (testCase: TestCase) => {
+        console.log('Card clicked:', testCase.id);
     };
 
     const formatStepCount = (count: number): string => {
@@ -88,110 +82,163 @@ const TestCaseTable: React.FC = () => {
                 flexDirection: 'column'
             }}
         >
-            {/* Scrollable Table Container */}
-            <Paper 
-                elevation={1} 
+            {/* Scrollable Cards Container */}
+            <Box 
                 sx={{ 
-                    borderRadius: 2, 
-                    overflow: 'hidden',
                     flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    marginBottom: 2
+                    overflow: 'auto',
+                    marginBottom: 2,
+                    '&::-webkit-scrollbar': {
+                        width: '8px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                        backgroundColor: '#f1f1f1',
+                        borderRadius: '4px',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                        backgroundColor: '#c1c1c1',
+                        borderRadius: '4px',
+                        '&:hover': {
+                            backgroundColor: '#a8a8a8',
+                        },
+                    },
                 }}
             >
-                <TableContainer 
-                    sx={{ 
-                        flex: 1,
-                        maxHeight: 'calc(100vh - 200px)', // Adjust based on your needs
-                        overflow: 'auto'
-                    }}
-                >
-                    <Table stickyHeader>
-                        <TableHead>
-                            <TableRow sx={{ backgroundColor: '#e0e0e0' }}>
-                                <TableCell sx={{ fontWeight: 'bold', color: '#333', backgroundColor: '#e0e0e0' }}>
-                                    Test Case ID
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', color: '#333', backgroundColor: '#e0e0e0' }}>
-                                    Test Case Description
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', color: '#333', backgroundColor: '#e0e0e0' }}>
-                                    Created On
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', color: '#333', backgroundColor: '#e0e0e0' }}>
-                                    Step Count
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', color: '#333', backgroundColor: '#e0e0e0' }}>
-                                    Status
-                                </TableCell>
-                                <TableCell sx={{ width: 50, backgroundColor: '#e0e0e0' }} />
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {testCases.map((testCase) => (
-                                <TableRow
-                                    key={testCase.id}
-                                    sx={{
-                                        backgroundColor: 'white',
-                                        cursor: 'pointer',
-                                        '&:hover': {
-                                            backgroundColor: '#f9f9f9',
-                                        },
-                                        borderBottom: '1px solid #e0e0e0'
-                                    }}
-                                    onClick={() => handleRowClick(testCase)}
-                                >
-                                    <TableCell sx={{ fontWeight: 'medium' }}>
+                {testCases.map((testCase) => (
+                    <Paper
+                        key={testCase.id}
+                        elevation={1}
+                        sx={{
+                            padding: 3,
+                            marginBottom: 2,
+                            borderRadius: 2,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            border: '1px solid #e0e0e0',
+                            '&:hover': {
+                                elevation: 3,
+                                transform: 'translateY(-1px)',
+                                borderColor: '#d0d0d0',
+                            },
+                            '&:last-child': {
+                                marginBottom: 0,
+                            }
+                        }}
+                        onClick={() => handleCardClick(testCase)}
+                    >
+                        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                            {/* Left side - Main content */}
+                            <Box sx={{ flex: 1 }}>
+                                {/* Test Case ID and Title */}
+                                <Box display="flex" alignItems="center" mb={1}>
+                                    <Typography 
+                                        variant="h6" 
+                                        sx={{ 
+                                            fontWeight: 'bold',
+                                            color: '#333',
+                                            marginRight: 2
+                                        }}
+                                    >
                                         {testCase.id}
-                                    </TableCell>
-                                    <TableCell>
-                                        {testCase.description}
-                                    </TableCell>
-                                    <TableCell sx={{ color: '#666' }}>
-                                        {testCase.createdOn}
-                                    </TableCell>
-                                    <TableCell sx={{ textAlign: 'center' }}>
-                                        {formatStepCount(testCase.stepCount)}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Chip
-                                            label={testCase.status}
-                                            sx={{
-                                                backgroundColor: '#fff3cd',
-                                                color: '#856404',
-                                                fontSize: '0.75rem',
-                                                height: 24,
-                                                '& .MuiChip-label': {
-                                                    px: 1.5
-                                                }
-                                            }}
-                                            size="small"
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <IconButton
-                                            size="small"
-                                            sx={{
-                                                color: '#666',
-                                                '&:hover': {
-                                                    backgroundColor: '#f0f0f0'
-                                                }
-                                            }}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleRowClick(testCase);
+                                    </Typography>
+                                    <Chip
+                                        label={testCase.status}
+                                        sx={{
+                                            backgroundColor: '#fff3cd',
+                                            color: '#856404',
+                                            fontSize: '0.75rem',
+                                            height: 24,
+                                            '& .MuiChip-label': {
+                                                px: 1.5
+                                            }
+                                        }}
+                                        size="small"
+                                    />
+                                </Box>
+
+                                {/* Description */}
+                                <Typography 
+                                    variant="body1" 
+                                    sx={{ 
+                                        marginBottom: 2,
+                                        color: '#555',
+                                        lineHeight: 1.5
+                                    }}
+                                >
+                                    {testCase.description}
+                                </Typography>
+
+                                {/* Metadata Row */}
+                                <Box display="flex" gap={4}>
+                                    <Box>
+                                        <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                                color: '#888',
+                                                fontWeight: 'medium',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: 0.5
                                             }}
                                         >
-                                            <AddIcon />
-                                        </IconButton>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Paper>
+                                            Created On
+                                        </Typography>
+                                        <Typography 
+                                            variant="body2" 
+                                            sx={{ color: '#666' }}
+                                        >
+                                            {testCase.createdOn}
+                                        </Typography>
+                                    </Box>
+                                    
+                                    <Box>
+                                        <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                                color: '#888',
+                                                fontWeight: 'medium',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: 0.5
+                                            }}
+                                        >
+                                            Step Count
+                                        </Typography>
+                                        <Typography 
+                                            variant="body2" 
+                                            sx={{ 
+                                                color: '#666',
+                                                fontWeight: 'bold'
+                                            }}
+                                        >
+                                            {formatStepCount(testCase.stepCount)}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+
+                            {/* Right side - Action button */}
+                            <Box>
+                                <IconButton
+                                    size="large"
+                                    sx={{
+                                        color: '#666',
+                                        backgroundColor: '#f8f9fa',
+                                        '&:hover': {
+                                            backgroundColor: '#e9ecef',
+                                            color: '#333'
+                                        }
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCardClick(testCase);
+                                    }}
+                                >
+                                    <AddIcon />
+                                </IconButton>
+                            </Box>
+                        </Box>
+                    </Paper>
+                ))}
+            </Box>
 
             {/* Fixed Bottom Button Bar */}
             <Paper
@@ -240,4 +287,4 @@ const TestCaseTable: React.FC = () => {
     );
 };
 
-export default TestCaseTable;
+export default TestCaseCardView;
