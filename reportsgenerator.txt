@@ -1,0 +1,27 @@
+import com.fasterxml.jackson.databind.ObjectMapper;
+import freemarker.template.Configuration;
+import freemarker.template.Template;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.Writer;
+
+public class ReportGenerator {
+    public static void main(String[] args) throws Exception {
+        // 1. Read JSON
+        ObjectMapper mapper = new ObjectMapper();
+        ReportModel report = mapper.readValue(new File("report.json"), ReportModel.class);
+
+        // 2. Load FreeMarker
+        Configuration cfg = new Configuration(Configuration.VERSION_2_3_31);
+        cfg.setClassLoaderForTemplateLoading(ReportGenerator.class.getClassLoader(), "templates");
+
+        // 3. Merge data with template
+        Template template = cfg.getTemplate("report.ftl");
+        try (Writer out = new FileWriter("execution-report.html")) {
+            template.process(report, out);
+        }
+
+        System.out.println("Report generated: execution-report.html");
+    }
+}
